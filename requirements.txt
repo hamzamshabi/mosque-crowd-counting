@@ -1,0 +1,10 @@
+torch>=2.0
+torchvision
+loralib
+numpy
+scipy
+pillow
+matplotlib
+tqdm
+pandas
+openpyxl

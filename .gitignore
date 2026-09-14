@@ -1,0 +1,19 @@
+# weights and checkpoints (not distributed)
+*.pth
+*.pt
+checkpoints*/
+
+# datasets
+site_data/
+drone_data/
+hacrowd_data/
+*_converted/
+UCF-QNRF_ECCV18/
+*.mat
+
+# outputs
+*.xlsx
+*.mp4
+__pycache__/
+.ipynb_checkpoints/
+.venv/

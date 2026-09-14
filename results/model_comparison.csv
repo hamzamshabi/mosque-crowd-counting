@@ -1,0 +1,7 @@
+model,training_data,bins,qnrf_mae,qnrf_rmse,mean_error,note
+Original pretrained CLIP-EBC ViT-B/16,UCF-QNRF,5 (max 4+),130.00,694.16,80.24,baseline
+LoRA fine-tune v0,drone + Hajj (812) + 350 QNRF replay,5,1096.33,4930.54,1086.89,over-counts dense crowds 2.5x (saturated bins)
+LoRA fine-tune (site-only),mosque site frames,5,452.40,1125.78,430.83,over-fits to one site
+LoRA fine-tune v1,all sources (10482),8 (max 17+),175.84,511.30,119.13,worse than baseline
+LoRA fine-tune v2,all sources (10482),native-scale max 5,103.79,211.78,42.87,first to beat baseline
+LoRA fine-tune v3 (final),all sources (10482),7 (max 9+),100.06,164.79,-5.85,best and well calibrated

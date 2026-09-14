@@ -1,0 +1,11 @@
+diff --git a/models/clip/utils.py b/models/clip/utils.py
+index f434ecb..89cbfec 100755
+--- a/models/clip/utils.py
++++ b/models/clip/utils.py
+@@ -36,5 +36,5 @@ def format_count(count: Union[float, Tuple[float, float]], prompt_type: str = "w
+         return f"There are more than {num2word(int(count[0]))} people." if prompt_type == "word" else f"There are more than {int(count[0])} people."
+     else:  # count is a tuple of finite numbers
+         left, right = int(count[0]), int(count[1])
+-        left, right = num2word(left), num2word(right) if prompt_type == "word" else left, right
++        left, right = (num2word(left), num2word(right)) if prompt_type == "word" else (left, right)
+         return f"There are between {left} and {right} people."
