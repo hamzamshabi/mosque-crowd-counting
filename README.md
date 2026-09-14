@@ -59,6 +59,20 @@ An earlier evaluation resized every test image to 224×224 before predicting. Un
 **3. Training crops had to match inference scale.**
 v2 switched training to clamped random-resized crops at native pixel scale (0.5–3.0×, capped at 90% of the short side), so per-cell densities during training match what sliding-window inference sees. This was the first version to beat the baseline.
 
+## Train/test overlap check
+
+The training pool mixes UCF-QNRF Train with JHU-Crowd++ and NWPU-Crowd, and all three were collected from the web. So I checked whether any UCF-QNRF **test** image also appears in the training data. [`eval/check_overlap.py`](eval/check_overlap.py) fingerprints every image with a 64-bit and a 256-bit difference hash and compares all 334 test images against 10,682 public images (QNRF Train, all of JHU-Crowd++, all of NWPU-Crowd).
+
+5 test images have an exact or near-exact copy ([results/overlap_check.csv](results/overlap_check.csv)): three in JHU-Crowd++, one in NWPU-Crowd train, and one inside UCF-QNRF's own Train split (that one also helps the pretrained baseline). Removing them doesn't change the result:
+
+| Test set | Fine-tuned MAE | Pretrained MAE | Reduction |
+|---|---|---|---|
+| All 334 images | 100.06 | 130.00 | 23.0% |
+| Without the 4 copies in JHU / NWPU | 100.19 | 130.61 | 23.3% |
+| Without all 5 | 100.43 | 130.73 | 23.2% |
+
+None of the four figures above is near any training image (closest 64-bit hash distance ≥ 15; copies score 0–1).
+
 ## Training data
 
 ~10,482 images in one pool, with public datasets converted to a common `images/` + `mats/` point-annotation format:
@@ -70,6 +84,8 @@ v2 switched training to clamped random-resized crops at native pixel scale (0.5�
 | [HAJJv2](https://github.com/KAU-Smart-Crowd/HAJJv2_dataset) (219 frames) | Hajj crowds |
 | Mosque site cameras | **proprietary, not included** |
 
+**Which splits were used:** UCF-QNRF **Train only** (1,201 images); its 334-image Test split was never used for training, so every number above is on unseen images. NWPU-Crowd train + val (3,609). JHU-Crowd++ **all splits including its test set** (4,360), so this model should not be evaluated on JHU-Crowd++.
+
 Drone frames are oversampled to 30% of each batch (`WeightedRandomSampler`). To train on public data only, remove `./site_data` from `DATA_DIRS` in [`training/train_lora_vit_b16.py`](training/train_lora_vit_b16.py).
 
 ## Repository layout
@@ -77,8 +93,9 @@ Drone frames are oversampled to 30% of each batch (`WeightedRandomSampler`). To 
 ```
 training/   train_lora_vit_b16.py, my_dataset.py, lora_utils.py, compute_bins.py, audit_density_histogram.py
 eval/       test_qnrf.py: full UCF-QNRF evaluation, writes an Excel report
+            check_overlap.py: finds test images duplicated in the training data
 demo/       predict_image.py: density-map figure for any image (made the images above)
-results/    model_comparison.csv, qnrf_per_image.csv
+results/    model_comparison.csv, qnrf_per_image.csv, overlap_check.csv
 patches/    one-line fix for upstream CLIP-EBC (see Setup)
 ```
 

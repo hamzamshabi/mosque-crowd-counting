@@ -1,0 +1,6 @@
+test_image,train_set,train_image,in_training_pool,dhash64_dist,dhash256_dist,gt,pred_finetuned,pred_pretrained
+img_0159.jpg,JHU-Crowd++ test,1534.jpg,yes,0,0,469,394.49,441.94
+img_0262.jpg,JHU-Crowd++ val,1585.jpg,yes,0,0,550,748.66,765.87
+img_0282.jpg,JHU-Crowd++ test,0119.jpg,yes,0,0,574,510.59,518.30
+img_0330.jpg,NWPU-Crowd train,2173.jpg,yes,1,0,1668,1647.33,1687.77
+img_0270.jpg,UCF-QNRF Train,img_1089.jpg,yes (also in baseline training),1,6,276,299.93,366.93
