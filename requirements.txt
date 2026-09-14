@@ -1,6 +1,11 @@
 torch>=2.0
 torchvision
 loralib
+# needed by CLIP-EBC itself
+timm
+ftfy
+regex
+einops
 numpy
 scipy
 pillow

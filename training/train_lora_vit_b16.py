@@ -243,7 +243,7 @@ def main():
     bins = [(0, 0), (1, 1), (2, 2), (3, 3), (4, 5), (6, 8), (9, float('inf'))]
     anchor_points = [0.0, 1.0, 2.0, 3.0, 4.2793, 6.5886, 9.7472]
     
-    # ✅ UPDATED: VPT configuration to match pretrained weights
+    # VPT configuration to match pretrained weights
     clip_args = {
         'prompt_type': 'word',
         'num_vpt': 32,        # ← Match pretrained (32 prompts)
@@ -269,7 +269,7 @@ def main():
     
     # =================================================
     # 1. Initialize Model
-    print("📦 Initializing CLIP-EBC model...")
+    print("Initializing CLIP-EBC model...")
     model = get_model(
         backbone=backbone_name,
         input_size=input_size,
