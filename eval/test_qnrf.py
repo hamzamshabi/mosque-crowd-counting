@@ -121,7 +121,6 @@ def test_on_qnrf(model, qnrf_test_dir, device, window_size=224, stride=224):
         img_path = os.path.join(qnrf_test_dir, fname)
         image = Image.open(img_path).convert('RGB')
 
-        # Load GT count from _ann.mat
         mat_name = os.path.splitext(fname)[0] + '_ann.mat'
         mat_path = os.path.join(qnrf_test_dir, mat_name)
         gt_count = 0

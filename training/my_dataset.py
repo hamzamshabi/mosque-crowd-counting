@@ -117,21 +117,17 @@ class CrowdDataset(Dataset):
         if self.augment:
             image, points, crop_size = self._clamped_random_resized_crop(image.copy(), points)
 
-            # Horizontal flip (50%)
             if random.random() < 0.5:
                 image = TF.hflip(image)
                 if len(points) > 0:
                     points[:, 0] = crop_size - 1 - points[:, 0]
 
-            # Color jitter (20%)
             if random.random() < 0.2:
                 image = self.color_jitter(image)
 
-            # Gaussian blur (20%)
             if random.random() < 0.2 and min(image.size) >= 5:
                 image = TF.gaussian_blur(image, kernel_size=5, sigma=(0.1, 5.0))
 
-            # Final resize to input_size
             image = TF.resize(image, (self.input_size, self.input_size))
             if len(points) > 0:
                 scale = self.input_size / crop_size
@@ -172,7 +168,6 @@ class CrowdDataset(Dataset):
         points_t = torch.tensor(points, dtype=torch.float32) if len(points) > 0 \
                    else torch.zeros((0, 2), dtype=torch.float32)
 
-        # Rasterize density from transformed points
         density_h = self.input_size // self.reduction
         density_w = self.input_size // self.reduction
         target_density = np.zeros((density_h, density_w), dtype=np.float32)
@@ -259,7 +254,6 @@ class CrowdDataset(Dataset):
         image = Image.open(img_path).convert('RGB')
         points = self._load_points(mat_path)
 
-        # Generate num_crops augmented versions
         crops = [self._process_crop(image, points) for _ in range(self.num_crops)]
 
         images = torch.stack([c[0] for c in crops], 0)      # [num_crops, C, H, W]

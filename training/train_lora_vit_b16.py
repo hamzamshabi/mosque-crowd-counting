@@ -10,7 +10,6 @@ import torch.nn.functional as F
 import math
 from functools import partial
 
-# Import official modules
 from models import get_model
 from losses import DACELoss
 
@@ -56,10 +55,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, grad_scaler, device
         optimizer.zero_grad(set_to_none=True)
 
         with autocast('cuda'):
-            # Model returns (logits, density) during training
             logits, pred_density = model(images)
 
-            # Compute DACE loss
             loss, loss_info = criterion(
                 pred_class=logits,
                 pred_density=pred_density,
@@ -67,7 +64,6 @@ def train_one_epoch(model, dataloader, criterion, optimizer, grad_scaler, device
                 target_points=points
             )
 
-        # Backward pass with gradient clipping
         grad_scaler.scale(loss).backward()
         grad_scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(
@@ -76,7 +72,6 @@ def train_one_epoch(model, dataloader, criterion, optimizer, grad_scaler, device
         grad_scaler.step(optimizer)
         grad_scaler.update()
 
-        # Accumulate metrics
         epoch_loss += loss_info['loss'].item()
         epoch_ce_loss += loss_info['ce_loss'].item()
 
@@ -86,7 +81,6 @@ def train_one_epoch(model, dataloader, criterion, optimizer, grad_scaler, device
                 epoch_count_loss += loss_info[key].item()
                 break
 
-        # Update progress bar
         pbar.set_postfix({
             'loss': f"{loss_info['loss'].item():.4f}",
             'ce': f"{loss_info['ce_loss'].item():.4f}",
@@ -124,7 +118,6 @@ def train_one_epoch(model, dataloader, criterion, optimizer, grad_scaler, device
         label = f"{i}" if i <= max_count else f">{max_count}"
         print(f"    {label:>4}  {hist_cpu[i]:>12,}  {bar}")
 
-    # Return average metrics
     num_batches = len(dataloader)
     return {
         'loss': epoch_loss / num_batches,
@@ -201,8 +194,8 @@ def evaluate(model, val_subset, device, window_size=224, stride=224):
 def main():
     # ================= CONFIGURATION =================
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Each dir holds images/ + mats/ (see training/README in the repo root README).
+
+    # Each dir holds images/ + mats/ (see Training data in the README).
     # site_data = proprietary mosque camera frames (not included); the rest are public:
     # drone_data = DroneCrowd + UP-COUNT, hacrowd_data = HAJJv2, *_converted = UCF-QNRF / JHU-Crowd++ / NWPU-Crowd.
     # Drop './site_data' to train on public data only.
@@ -220,7 +213,6 @@ def main():
     DRONE_FRACTION = 0.30       # target share of drone_data in each batch
     DRONE_TAG = 'drone_data'
 
-    # Model configuration
     backbone_name = 'clip_vit_b_16'
     input_size = 224
     reduction = 8
@@ -229,20 +221,19 @@ def main():
     USE_LORA = True
     lora_rank = 16
 
-    # Training configuration
     batch_size = 32
     lr = 1e-4
     epochs = 150
     num_workers = 8
     warmup_epochs = 5
-    
+
     # CLIP-EBC bins — data-driven from compute_bins.py (FULL dataset, 10,482
     # samples x 2 crops = 16,435,776 cells) under clamped RandomResizedCrop
     # [0.5, 3.0]. MAX_COUNT=10 clips 0.00265% of cells (436/16.4M). Anchors are
     # the mean of clipped cells in each bin range (CLIP-EBC "average" convention).
     bins = [(0, 0), (1, 1), (2, 2), (3, 3), (4, 5), (6, 8), (9, float('inf'))]
     anchor_points = [0.0, 1.0, 2.0, 3.0, 4.2793, 6.5886, 9.7472]
-    
+
     # VPT configuration to match pretrained weights
     clip_args = {
         'prompt_type': 'word',
@@ -250,9 +241,9 @@ def main():
         'vpt_drop': 0.0,      # ← No dropout
         'deep_vpt': True      # ← Deep VPT (prompts at all layers)
     }
-    
+
     print(f"\n{'='*70}")
-    print(f"CLIP-EBC LoRA + VPT Fine-tuning for Mosque Crowd Counting")
+    print("CLIP-EBC LoRA + VPT Fine-tuning for Mosque Crowd Counting")
     print(f"{'='*70}")
     print(f"Backbone:      {backbone_name}")
     print(f"LoRA:          {'ON (rank={})'.format(lora_rank) if USE_LORA else 'OFF'}")
@@ -263,10 +254,10 @@ def main():
     print(f"Learning Rate: {lr}")
     print(f"Epochs:        {epochs}")
     print(f"Warmup:        {warmup_epochs} epochs (linear ramp 1e-6 -> {lr})")
-    print(f"Loss:          DACE (CE + DMCount)")
-    print(f"Normalization: ImageNet")
+    print("Loss:          DACE (CE + DMCount)")
+    print("Normalization: ImageNet")
     print(f"{'='*70}\n")
-    
+
     # =================================================
     # 1. Initialize Model
     print("Initializing CLIP-EBC model...")
@@ -278,7 +269,7 @@ def main():
         anchor_points=anchor_points,
         **clip_args
     )
-    
+
     # 2. Load Pretrained Weights
 
 
@@ -334,18 +325,18 @@ def main():
         if USE_LORA and has_lora_keys:
             # Resuming LoRA training — inject LoRA first so keys match
             from lora_utils import inject_lora_into_clip_vit, prepare_model_for_lora_training
-            print(f"  LoRA checkpoint detected — injecting LoRA before loading weights...")
+            print("  LoRA checkpoint detected — injecting LoRA before loading weights...")
             model = inject_lora_into_clip_vit(model, rank=lora_rank)
             model.load_state_dict(resume_data['model_state_dict'])
             model = prepare_model_for_lora_training(model, device=str(device))
             lora_injected = True
             # New phase (decoder unfrozen) — reset epoch, fresh optimizer
-            print(f"  Loaded LoRA weights (decoder phase — epoch reset to 0)")
+            print("  Loaded LoRA weights (decoder phase — epoch reset to 0)")
             resume_data = None
         else:
             model.load_state_dict(resume_data['model_state_dict'])
             if USE_LORA:
-                print(f"  Loaded VPT weights (new LoRA phase — epoch reset to 0)")
+                print("  Loaded VPT weights (new LoRA phase — epoch reset to 0)")
                 resume_data = None
             else:
                 resume_epoch = resume_data['epoch']
@@ -374,7 +365,6 @@ def main():
 
     model = model.to(device)
 
-    # Multi-GPU with DataParallel
     num_gpus = torch.cuda.device_count()
     if num_gpus > 1:
         print(f"\n  Using {num_gpus} GPUs with DataParallel")
@@ -383,10 +373,10 @@ def main():
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  Trainable: {trainable_params_count:,} / {total_params:,} ({100*trainable_params_count/total_params:.2f}%)")
-    
+
     # 4. Setup Training Components
     print("\n  Setting up training components...")
-    
+
     # Loss function — DMCount (OT + TV + count)
     criterion = DACELoss(
         bins=bins,
@@ -397,7 +387,6 @@ def main():
     ).to(device)
     print("   Loss: DACE (Cross-Entropy + DMCount)")
 
-    # Optimizer
     trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.AdamW(trainable_params, lr=lr, weight_decay=1e-4)
     print(f"   Optimizer: AdamW (lr={lr}, weight_decay=1e-4)")
@@ -431,19 +420,18 @@ def main():
         ),
     )
     print(f"   Scheduler: CosineAnnealingWarmRestarts (warmup={warmup_epochs}, T_0=5, T_mult=2)")
-    
-    # Gradient scaler for mixed precision
+
     grad_scaler = GradScaler()
 
     # Restore optimizer/scheduler state if resuming
     if resume_data is not None:
         if 'optimizer_state_dict' in resume_data:
             optimizer.load_state_dict(resume_data['optimizer_state_dict'])
-            print(f"   Optimizer state restored")
+            print("   Optimizer state restored")
         if 'scheduler_state_dict' in resume_data:
             scheduler.load_state_dict(resume_data['scheduler_state_dict'])
-            print(f"   Scheduler state restored")
-    
+            print("   Scheduler state restored")
+
     # 5. Setup Data Loaders
     print("\n  Loading datasets...")
     train_dataset, val_dataset = create_train_val_split(
@@ -499,8 +487,7 @@ def main():
     )
     print(f"   Training samples: {len(train_dataset)}, Validation samples: {len(val_dataset)}")
     print(f"   Validation: sliding-window at NATIVE resolution (window={input_size}, stride={input_size})")
-    
-    # Helper to get unwrapped model state dict (handles DataParallel)
+
     def get_state_dict():
         if hasattr(model, 'module'):
             return model.module.state_dict()
@@ -518,31 +505,28 @@ def main():
         print(f"\n{'='*70}")
         print(f"Epoch {epoch}/{epochs}")
         print(f"{'='*70}")
-        
-        # Train
+
         train_metrics = train_one_epoch(
             model, train_loader, criterion, optimizer, grad_scaler, device, epoch, max_count=MAX_COUNT
         )
-        
-        # Print training metrics
-        print(f"\n  Training Metrics:")
+
+        print("\n  Training Metrics:")
         print(f"   Loss:       {train_metrics['loss']:.4f}")
         print(f"   CE Loss:    {train_metrics['ce_loss']:.4f}")
         print(f"   Count Loss: {train_metrics['count_loss']:.4f}")
-        
+
         # Update learning rate (every epoch, including warmup — author's pattern)
         scheduler.step()
         current_lr = optimizer.param_groups[0]['lr']
         print(f"   Learning Rate: {current_lr:.6f}")
-        
+
         # Evaluate frequently early (catch divergence), then every 5 epochs
         if val_dataset is not None and (epoch <= 10 or epoch % 5 == 0):
             val_metrics = evaluate(model, val_dataset, device)
-            print(f"\n  Validation Metrics:")
+            print("\n  Validation Metrics:")
             print(f"   MAE:  {val_metrics['mae']:.2f}")
             print(f"   RMSE: {val_metrics['rmse']:.2f}")
-            
-            # Save best model
+
             if val_metrics['mae'] < best_mae:
                 best_mae = val_metrics['mae']
                 save_path = os.path.join(CHECKPOINT_DIR, "best_model.pth")
@@ -568,8 +552,7 @@ def main():
                     }
                 }, save_path)
                 print(f"   Best model saved! MAE: {best_mae:.2f}")
-        
-        # Save regular checkpoint every 10 epochs
+
         if epoch % 10 == 0:
             save_path = os.path.join(CHECKPOINT_DIR, f"checkpoint_epoch_{epoch}.pth")
             torch.save({
@@ -579,9 +562,9 @@ def main():
                 'scheduler_state_dict': scheduler.state_dict(),
             }, save_path)
             print(f"   Checkpoint saved: {save_path}")
-    
+
     print(f"\n{'='*70}")
-    print(f"Training completed!")
+    print("Training completed!")
     print(f"   Best Validation MAE: {best_mae:.2f}")
     print(f"   Checkpoints saved in: {CHECKPOINT_DIR}")
     print(f"{'='*70}\n")
